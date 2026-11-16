@@ -99,12 +99,19 @@ fn fnv1a(s: &str) -> u64 {
 fn snapshot_line(name: &str) -> (String, String) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let contents = std::fs::read_to_string(root.join("tests/data").join(name)).unwrap();
-    let objects = parse_t3d(&contents).unwrap_or_else(|e| panic!("failed to parse {}:\n{}", name, e));
+    let objects =
+        parse_t3d(&contents).unwrap_or_else(|e| panic!("failed to parse {}:\n{}", name, e));
     let mut dump = String::new();
     for o in &objects {
         dump_object(&mut dump, o, 0);
     }
-    let line = format!("{} objects={} lines={} hash={:016x}", name, objects.len(), dump.lines().count(), fnv1a(&dump));
+    let line = format!(
+        "{} objects={} lines={} hash={:016x}",
+        name,
+        objects.len(),
+        dump.lines().count(),
+        fnv1a(&dump)
+    );
     (line, dump)
 }
 
@@ -115,7 +122,10 @@ fn snapshots_match() {
     let results: Vec<_> = DATA_FILES.iter().map(|n| (n, snapshot_line(n))).collect();
 
     if std::env::var_os("UPDATE_SNAPSHOTS").is_some() {
-        let text: String = results.iter().map(|(_, (l, _))| format!("{}\n", l)).collect();
+        let text: String = results
+            .iter()
+            .map(|(_, (l, _))| format!("{}\n", l))
+            .collect();
         std::fs::write(&snapshot_path, text).unwrap();
     }
 
@@ -130,5 +140,9 @@ fn snapshots_match() {
             mismatches.push(format!("  expected: {:?}\n  actual:   {}", want, line));
         }
     }
-    assert!(mismatches.is_empty(), "snapshot mismatch (dumps in target/snapshots/):\n{}", mismatches.join("\n"));
+    assert!(
+        mismatches.is_empty(),
+        "snapshot mismatch (dumps in target/snapshots/):\n{}",
+        mismatches.join("\n")
+    );
 }

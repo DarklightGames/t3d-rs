@@ -1,36 +1,75 @@
-BEGIN = _{ "Begin" }
-END = _{ "End" }
-NON_DIGIT_ID_CHARACTER = _{ ASCII_ALPHA | "_" }
-ID_CHARACTER = _{ ASCII_DIGIT | NON_DIGIT_ID_CHARACTER }
-REFERENCE_PATH_CHARACTER = _ { !WS ~ !"'" ~ !"\"" ~ ASCII }
-id = { ID_CHARACTER+ }
-WS = _{ " " | "\t" | "\n" }
-int = { ("+" | "-")? ~ ASCII_DIGIT+ ~ !NON_DIGIT_ID_CHARACTER }
-string = { (!"\"" ~ ANY)* }
-string_outer = _{ "\"" ~ string ~ "\"" }
-float = { ("+" | "-")? ~ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ ~ ("e" ~ int)? }
+// Grammar for a single line of T3D text.
+//
+// T3D (and UnrealScript `defaultproperties`) is line-oriented: the importer in
+// `importer.rs` splits the input into lines, recognises `Begin`/`End` lines
+// itself, and parses every other line with the `line` rule. When a line fails
+// to parse in full, `line_prefix` is used to salvage a complete statement at
+// the start of the line. Comments are blanked out before lines reach this
+// grammar, so it never sees them.
 
-reference_path = { REFERENCE_PATH_CHARACTER+ }
-reference = { id ~ "'" ~ reference_path ~ "'" }
+WS = _{ " " | "\t" }
+id_char = _{ ASCII_ALPHANUMERIC | "_" }
+id = @{ id_char+ }
+sign = _{ "+" | "-" }
 
-// TODO: does not handle empty entries yet.
-array = { "(" ~ value ~ ("," ~ value)* ~ ")" }
+// Numbers may not run into identifier characters or further dots, so that
+// tokens like `20_seconds`, `2DLoftSIDE` or `0.0.5` are not split up.
+exponent = _{ ^"e" ~ sign? ~ ASCII_DIGIT+ }
+float = @{
+    sign? ~ (
+        (ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT* ~ exponent?) |
+        ("." ~ ASCII_DIGIT+ ~ exponent?) |
+        (ASCII_DIGIT+ ~ exponent)
+    ) ~ !(id_char | ".")
+}
+int = @{ sign? ~ ASCII_DIGIT+ ~ !(id_char | ".") }
 
-value = { array | struct_ | float | int | reference | reference_path | string_outer }
+// Strings end at the closing quote or the end of the line. A backslash escapes
+// the following character; the raw (unescaped) contents are kept.
+string_inner = @{ (("\\" ~ ANY) | (!("\"" | "\\") ~ ANY))* }
+string = ${ "\"" ~ string_inner ~ "\"" }
 
-array_index = _{ "(" ~ int ~ ")" }
-struct_properties = _{ property_assignment ~ WHITE_SPACE* ~ ("," ~ WHITE_SPACE* ~ property_assignment)* }
-struct_ = { "(" ~ struct_properties ~ ")" }
+// `Texture'Pkg.Tex'`; whitespace is allowed before the quote (`Texture 'Pkg.Tex'`).
+reference_path = @{ (!"'" ~ ANY)+ }
+reference = ${ id ~ WS* ~ "'" ~ reference_path ~ "'" }
 
-property_assignment = { id ~ array_index? ~ WHITE_SPACE* ~ "=" ~ (NEWLINE | (WHITE_SPACE* ~ value)) }
-property_assignment_float_list = { float ~ WHITE_SPACE* ~ ("," ~ WHITE_SPACE* ~ float)* }
-property_assignment_vector = { id ~  WHITE_SPACE+ ~ property_assignment_float_list }
-property_assignment_inline_struct = { id ~ WS+ ~ property_assignment ~ (WS+ ~ property_assignment)* }
+// `'SomeName'` or `''`
+name_inner = @{ (!"'" ~ ANY)* }
+name = ${ "'" ~ name_inner ~ "'" }
 
-object_statement = { object | property_assignment | property_assignment_vector | property_assignment_inline_struct }
-object_statements = { object_statement ~ (WHITE_SPACE+ ~ object_statement)* }
-object = { BEGIN ~ WHITE_SPACE+ ~ id ~ (WHITE_SPACE+ ~ object_statements)? ~ WHITE_SPACE+ ~ END ~ WHITE_SPACE+ ~ id }
+// Any other unquoted token, e.g. `None`, `true`, `ROLE_Authority`,
+// `idle-empty`, `20_seconds` or `Package.Class.SubObject`.
+bare = @{ (!(WS | "," | "(" | ")" | "\"" | "'" | ";" | "=") ~ ANY)+ }
 
-objects = _{ object ~ (WHITE_SPACE+ ~ object)* }
+struct_ = { "(" ~ WS* ~ (assignment ~ (WS* ~ "," ~ WS* ~ assignment)* ~ (WS* ~ ",")?)? ~ WS* ~ ")" }
+array_element = { value? }
+array = { "(" ~ WS* ~ array_element ~ (WS* ~ "," ~ WS* ~ array_element)* ~ WS* ~ ")" }
 
-t3d = { SOI ~ WHITE_SPACE* ~ objects ~ WHITE_SPACE* ~ EOI }
+// A bare token directly followed by a quote is a broken reference
+// (`Texture'Pkg.Tex` with no closing quote), not an identifier.
+value = { struct_ | array | float | int | string | reference | name | (bare ~ !"'") }
+
+index_value = { int | id }
+index = _{ ("(" ~ WS* ~ index_value ~ WS* ~ ")") | ("[" ~ WS* ~ index_value ~ WS* ~ "]") }
+assignment = { id ~ index? ~ WS* ~ "=" ~ WS* ~ value? }
+
+// `Origin -00512.000000,+00256.000000,+00000.000000`
+vector_number = _{ float | int }
+vector_line = { id ~ WS+ ~ vector_number ~ (WS* ~ "," ~ WS* ~ vector_number)* }
+
+// `Pan U=57 V=99`
+inline_struct = { id ~ WS+ ~ assignment ~ (WS+ ~ assignment)* }
+
+statement = { assignment | vector_line | inline_struct }
+terminator = _{ (WS* ~ ";")* ~ WS* }
+
+line = { SOI ~ WS* ~ statement ~ terminator ~ EOI }
+line_prefix = { SOI ~ WS* ~ statement }
+
+begin = { ^"begin" ~ WS+ ~ id ~ (WS+ ~ assignment)* }
+begin_line = { SOI ~ WS* ~ begin ~ terminator ~ EOI }
+begin_prefix = { SOI ~ WS* ~ begin }
+
+end = { ^"end" ~ WS+ ~ id }
+end_line = { SOI ~ WS* ~ end ~ terminator ~ EOI }
+end_prefix = { SOI ~ WS* ~ end }

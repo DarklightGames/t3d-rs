@@ -12,5 +12,3 @@ exclude = ["tests/data"]
 [dependencies]
 pest = "2.9.6"
 pest_derive = "2.9.6"
-pest_consume = "1.1.3"
-pest_consume_macros = "1.1.0"
