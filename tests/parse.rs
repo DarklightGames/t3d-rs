@@ -3,10 +3,12 @@ use std::path::Path;
 use t3d::{parse_t3d, T3dObject, T3dPropertyValue, T3dReference, T3dValue};
 
 fn parse_file(name: &str) -> Vec<T3dObject> {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data").join(name);
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/data")
+        .join(name);
     let contents = std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("failed to read {}: {}", path.display(), e));
-    parse_t3d(&contents).unwrap_or_else(|e| panic!("failed to parse {}:\n{}", name, e))
+    parse_t3d(&contents)
 }
 
 #[test]
@@ -17,8 +19,7 @@ fn property_assignment_with_reference_array() {
             SomeArray=(StaticMesh'Foo.Bar',StaticMesh'Baz.Boo')
         End Object
         ",
-    )
-    .unwrap();
+    );
     let object = objects.first().unwrap();
     let reference = |type_: &str, path: &str| {
         Some(T3dValue::Reference(T3dReference {
@@ -51,8 +52,7 @@ fn ut99_polygon() {
                 Vertex   -00724.077271,+00724.077271,-00016.000063
             End Polygon
         ",
-    )
-    .unwrap();
+    );
     assert_eq!(1, objects.len());
     let object = objects.first().unwrap();
     assert_eq!(4, object.properties.len());
@@ -71,8 +71,7 @@ fn property_assignment_empty_value() {
                 TheNextString=\"\"
             End Object
         ",
-    )
-    .unwrap();
+    );
     assert_eq!(1, objects.len());
     let object = objects.first().unwrap();
     assert_eq!(2, object.properties.len());

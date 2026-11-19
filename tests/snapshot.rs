@@ -99,8 +99,7 @@ fn fnv1a(s: &str) -> u64 {
 fn snapshot_line(name: &str) -> (String, String) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let contents = std::fs::read_to_string(root.join("tests/data").join(name)).unwrap();
-    let objects =
-        parse_t3d(&contents).unwrap_or_else(|e| panic!("failed to parse {}:\n{}", name, e));
+    let objects = parse_t3d(&contents);
     let mut dump = String::new();
     for o in &objects {
         dump_object(&mut dump, o, 0);

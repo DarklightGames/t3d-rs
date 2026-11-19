@@ -2,7 +2,7 @@
 //! and the T3D-style property text used by UnrealScript `defaultproperties` blocks.
 //!
 //! ```
-//! let objects = t3d::parse_t3d("Begin Object\n    Foo=1\nEnd Object").unwrap();
+//! let objects = t3d::parse_t3d("Begin Object\n    Foo=1\nEnd Object");
 //! assert_eq!(objects[0].type_, "Object");
 //! ```
 //!
@@ -40,7 +40,6 @@ pub mod syntax;
 use std::fmt;
 
 pub use ast::*;
-pub use importer::Rule;
 pub use syntax::{Diagnostic, DiagnosticKind, Span};
 
 /// How parsing problems are handled.
@@ -87,9 +86,6 @@ impl fmt::Display for T3dError {
 }
 
 impl std::error::Error for T3dError {}
-
-/// Kept for compatibility; [`parse_t3d`] no longer fails on syntax errors.
-pub type T3dSyntaxError = pest::error::Error<Rule>;
 
 fn finish<T>(
     value: T,
@@ -161,7 +157,7 @@ pub fn parse_t3d_with(
 /// Parses a T3D document permissively into [`T3dObject`]s. Invalid lines are
 /// discarded; use [`parse_t3d_with`] to see what was discarded or to parse
 /// strictly.
-pub fn parse_t3d(contents: &str) -> Result<Vec<T3dObject>, T3dSyntaxError> {
+pub fn parse_t3d(contents: &str) -> Vec<T3dObject> {
     let (statements, _) = importer::Importer::run(contents);
-    Ok(legacy::objects(statements))
+    legacy::objects(statements)
 }

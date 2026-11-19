@@ -300,7 +300,7 @@ fn parse_t3d_with_reports_diagnostics() {
     assert_eq!(parsed.diagnostics[0].line, 3);
     assert!(t3d::parse_t3d_with(text, &STRICT).is_err());
     // The legacy API stays permissive.
-    assert_eq!(t3d::parse_t3d(text).unwrap().len(), 1);
+    assert_eq!(t3d::parse_t3d(text).len(), 1);
 }
 
 #[test]

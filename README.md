@@ -10,7 +10,7 @@ This library is still a work-in-progress.
 
 ```rust
 let contents = std::fs::read_to_string("data.t3d")?;
-let objects = t3d::parse_t3d(&contents)?;
+let objects = t3d::parse_t3d(&contents);
 
 for object in &objects {
     println!("{}", object.type_);
