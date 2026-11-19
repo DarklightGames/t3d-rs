@@ -6,8 +6,9 @@ description = "A parser for Unreal Engine T3D files"
 license = "MIT"
 repository = "https://github.com/DarklightGames/t3d-rs"
 readme = "README.md"
-keywords = ["unreal", "t3d", "parser"]
-exclude = ["tests/data"]
+keywords = ["unreal", "t3d", "unrealscript", "parser", "gamedev"]
+categories = ["parser-implementations", "game-development"]
+include = ["src/**", "README.md", "LICENSE"]
 
 [dependencies]
 pest = "2.9.6"
